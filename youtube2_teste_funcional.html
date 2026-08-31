@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="referrer" content="strict-origin-when-cross-origin" />
+  <title>YouTube 2 - Teste funcional</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      background: #0f0f0f;
+      color: #fff;
+    }
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 18px;
+      background: rgba(15,15,15,.96);
+      border-bottom: 1px solid #292929;
+    }
+    .logo {
+      font-size: 22px;
+      font-weight: 800;
+    }
+    .badge {
+      font-size: 12px;
+      background: #272727;
+      color: #ccc;
+      padding: 5px 8px;
+      border-radius: 999px;
+    }
+    main {
+      width: min(100%, 1000px);
+      margin: 0 auto;
+      padding: 18px;
+    }
+    .player-wrap {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 16 / 9;
+      background: #000;
+      border-radius: 16px;
+      overflow: hidden;
+    }
+    .player-wrap iframe {
+      width: 100%;
+      height: 100%;
+      border: 0;
+      display: block;
+    }
+    h1 {
+      font-size: 22px;
+      margin: 16px 0 8px;
+    }
+    .muted {
+      color: #aaa;
+      line-height: 1.5;
+    }
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin: 18px 0;
+    }
+    button, a.button {
+      appearance: none;
+      border: 0;
+      border-radius: 999px;
+      padding: 12px 16px;
+      background: #fff;
+      color: #111;
+      font-weight: 700;
+      text-decoration: none;
+      cursor: pointer;
+    }
+    button.secondary, a.secondary {
+      background: #272727;
+      color: #fff;
+    }
+    .notice {
+      margin-top: 18px;
+      padding: 14px;
+      border-radius: 12px;
+      background: #1d1d1d;
+      color: #d6d6d6;
+      font-size: 14px;
+      line-height: 1.55;
+    }
+    code {
+      color: #fff;
+      background: #292929;
+      padding: 2px 5px;
+      border-radius: 5px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="logo">YouTube 2</div>
+    <div class="badge">teste</div>
+  </header>
+
+  <main>
+    <div class="player-wrap">
+      <iframe
+        id="ytPlayer"
+        src="https://www.youtube-nocookie.com/embed/YTnlPh_TSFw?playsinline=1&rel=0"
+        title="Player do YouTube"
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
+        referrerpolicy="strict-origin-when-cross-origin"
+        allowfullscreen>
+      </iframe>
+    </div>
+
+    <h1>Teste do vídeo YTnlPh_TSFw</h1>
+    <div class="muted">
+      Este arquivo tenta usar o player incorporado oficial do YouTube.
+    </div>
+
+    <div class="actions">
+      <a class="button" href="https://www.youtube.com/watch?v=YTnlPh_TSFw" target="_blank" rel="noopener noreferrer">
+        Assistir no YouTube
+      </a>
+      <button class="secondary" onclick="recarregarPlayer()">Recarregar player</button>
+    </div>
+
+    <div class="notice" id="status"></div>
+  </main>
+
+  <script>
+    const status = document.getElementById("status");
+
+    function mostrarStatus() {
+      const protocolo = location.protocol;
+      const host = location.host || "(sem domínio)";
+
+      if (protocolo === "http:" || protocolo === "https:") {
+        status.innerHTML =
+          "✅ A página está sendo executada por <code>" +
+          protocolo + "//" + host +
+          "</code>. Este é o modo recomendado para o player incorporado.";
+      } else {
+        status.innerHTML =
+          "⚠️ Você abriu este HTML como arquivo/local (<code>" +
+          protocolo +
+          "</code>). Alguns navegadores e leitores transformam isso em <code>about:blank</code> ou não enviam o referenciador exigido pelo YouTube. " +
+          "Se aparecer Erro 153, publique este mesmo arquivo no GitHub Pages ou abra através de um servidor HTTP local. " +
+          "O botão “Assistir no YouTube” continuará funcionando.";
+      }
+    }
+
+    function recarregarPlayer() {
+      const player = document.getElementById("ytPlayer");
+      const atual = player.src;
+      player.src = "";
+      setTimeout(() => {
+        player.src = atual;
+      }, 150);
+    }
+
+    mostrarStatus();
+  </script>
+</body>
+</html>
