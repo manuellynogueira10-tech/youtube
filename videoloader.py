@@ -1,25 +1,5 @@
 #!/usr/bin/env python3
 
-"""
-YouTube 2 - Video Loader V3
-
-Tavily -> encontra vídeos
-YouTube oEmbed -> confirma vídeo + título + canal
-video_list.json -> alimenta o site
-
-SEGURANÇA:
-- TAVILY_API_KEY fica somente no ambiente.
-- A chave nunca é salva ou impressa.
-- Somente URLs oficiais do YouTube são aceitas.
-- IDs são validados.
-- Respostas possuem limite de tamanho.
-- Se ocorrer erro, o video_list.json antigo é preservado.
-- O arquivo novo é gravado de forma atômica.
-- Não exige instalação de bibliotecas externas.
-"""
-
-from __future__ import annotations
-
 import json
 import os
 import re
@@ -33,7 +13,6 @@ import urllib.request
 
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
 
 
 # ============================================================
@@ -45,18 +24,13 @@ TAVILY_API_KEY = os.environ.get(
     ""
 ).strip()
 
-
-TAVILY_ENDPOINT = (
-    "https://api.tavily.com/search"
-)
-
+TAVILY_ENDPOINT = "https://api.tavily.com/search"
 
 OUTPUT_FILE = (
     Path(__file__)
     .resolve()
     .with_name("video_list.json")
 )
-
 
 MAX_VIDEOS = 40
 
@@ -71,12 +45,7 @@ MAX_RESPONSE_BYTES = 2_000_000
 MAX_OEMBED_BYTES = 300_000
 
 
-# Duas chamadas básicas:
-# até 20 vídeos normais
-# até 20 Shorts
-
 SEARCH_QUERIES = (
-
     (
         "popular trending viral YouTube videos today "
         "music gaming entertainment technology"
@@ -85,18 +54,15 @@ SEARCH_QUERIES = (
     (
         "popular viral trending YouTube Shorts today"
     ),
-
 )
 
 
 YOUTUBE_HOSTS = {
-
     "youtube.com",
     "www.youtube.com",
     "m.youtube.com",
     "music.youtube.com",
     "youtu.be",
-
 }
 
 
@@ -106,7 +72,7 @@ VIDEO_ID_PATTERN = re.compile(
 
 
 # ============================================================
-# ERRO PERSONALIZADO
+# ERRO
 # ============================================================
 
 class LoaderError(RuntimeError):
@@ -114,13 +80,10 @@ class LoaderError(RuntimeError):
 
 
 # ============================================================
-# TEXTO SEGURO
+# LIMPA TEXTO
 # ============================================================
 
-def clean_text(
-    value: Any,
-    limit: int
-) -> str:
+def clean_text(value, limit):
 
     text = " ".join(
         str(value or "").split()
@@ -133,10 +96,7 @@ def clean_text(
 # LEITURA LIMITADA
 # ============================================================
 
-def read_limited(
-    response,
-    max_bytes: int
-) -> bytes:
+def read_limited(response, max_bytes):
 
     data = response.read(
         max_bytes + 1
@@ -145,8 +105,7 @@ def read_limited(
     if len(data) > max_bytes:
 
         raise LoaderError(
-            "Resposta remota excedeu "
-            "o limite permitido."
+            "Resposta remota muito grande."
         )
 
     return data
@@ -157,13 +116,12 @@ def read_limited(
 # ============================================================
 
 def http_json(
-    url: str,
-    *,
-    method: str = "GET",
-    payload: dict | None = None,
-    headers: dict | None = None,
-    timeout: int = REQUEST_TIMEOUT,
-    max_bytes: int = MAX_RESPONSE_BYTES,
+    url,
+    method="GET",
+    payload=None,
+    headers=None,
+    timeout=REQUEST_TIMEOUT,
+    max_bytes=MAX_RESPONSE_BYTES
 ):
 
     body = None
@@ -176,13 +134,8 @@ def http_json(
 
 
     request_headers = {
-
-        "Accept":
-            "application/json",
-
-        "User-Agent":
-            "YouTube2-VideoLoader/3.0",
-
+        "Accept": "application/json",
+        "User-Agent": "YouTube2-Loader/3.0"
     }
 
 
@@ -201,15 +154,10 @@ def http_json(
 
 
     request = urllib.request.Request(
-
         url,
-
         data=body,
-
         headers=request_headers,
-
-        method=method,
-
+        method=method
     )
 
 
@@ -231,32 +179,19 @@ def http_json(
         if error.code == 401:
 
             raise LoaderError(
-                "A Tavily recusou a API Key."
+                "TAVILY_API_KEY inválida."
             ) from error
 
 
         if error.code == 429:
 
             raise LoaderError(
-                "Limite de requisições "
-                "da Tavily atingido."
-            ) from error
-
-
-        if error.code in (
-            432,
-            433
-        ):
-
-            raise LoaderError(
-                "Limite de créditos/uso "
-                "da Tavily atingido."
+                "Limite de requisições da Tavily atingido."
             ) from error
 
 
         raise LoaderError(
-            f"Servidor respondeu HTTP "
-            f"{error.code}."
+            f"Erro HTTP {error.code}"
         ) from error
 
 
@@ -267,7 +202,7 @@ def http_json(
     ) as error:
 
         raise LoaderError(
-            f"Falha de rede: {error}"
+            f"Erro de rede: {error}"
         ) from error
 
 
@@ -284,18 +219,15 @@ def http_json(
     ) as error:
 
         raise LoaderError(
-            "O servidor não retornou "
-            "um JSON válido."
+            "Resposta JSON inválida."
         ) from error
 
 
 # ============================================================
-# EXTRAIR ID
+# EXTRAI ID DO YOUTUBE
 # ============================================================
 
-def extract_video_id(
-    url: str
-):
+def extract_video_id(url):
 
     try:
 
@@ -303,7 +235,7 @@ def extract_video_id(
             url.strip()
         )
 
-    except ValueError:
+    except Exception:
 
         return "", False
 
@@ -331,8 +263,6 @@ def extract_video_id(
     is_short = False
 
 
-    # youtu.be/ID
-
     if host == "youtu.be":
 
         video_id = (
@@ -342,86 +272,43 @@ def extract_video_id(
         )
 
 
-    # youtube.com/watch?v=ID
-
     elif path == "/watch":
 
         video_id = (
-
             urllib.parse
             .parse_qs(
                 parsed.query
             )
-            .get(
-                "v",
-                [""]
-            )[0]
-
+            .get("v", [""])[0]
         )
 
 
-    # youtube.com/shorts/ID
-
-    elif path.startswith(
-        "/shorts/"
-    ):
+    elif path.startswith("/shorts/"):
 
         video_id = (
-
             path
-            .split(
-                "/shorts/",
-                1
-            )[1]
-            .split(
-                "/",
-                1
-            )[0]
-
+            .split("/shorts/", 1)[1]
+            .split("/", 1)[0]
         )
 
         is_short = True
 
 
-    # youtube.com/live/ID
-
-    elif path.startswith(
-        "/live/"
-    ):
+    elif path.startswith("/live/"):
 
         video_id = (
-
             path
-            .split(
-                "/live/",
-                1
-            )[1]
-            .split(
-                "/",
-                1
-            )[0]
-
+            .split("/live/", 1)[1]
+            .split("/", 1)[0]
         )
 
 
-    # youtube.com/embed/ID
-
-    elif path.startswith(
-        "/embed/"
-    ):
+    elif path.startswith("/embed/"):
 
         video_id = (
-
             path
-            .split(
-                "/embed/",
-                1
-            )[1]
-            .split(
-                "/",
-                1
-            )[0]
-
+            .split("/embed/", 1)[1]
+            .split("/", 1)[0]
         )
 
 
@@ -439,55 +326,29 @@ def extract_video_id(
 
 
 # ============================================================
-# BUSCAR NA TAVILY
+# BUSCA TAVILY
 # ============================================================
 
-def tavily_search(
-    query: str
-):
+def tavily_search(query):
 
     payload = {
+        "query": query,
+        "search_depth": "basic",
+        "max_results": RESULTS_PER_QUERY,
+        "topic": "general",
 
-        "query":
-            query,
-
-        "search_depth":
-            "basic",
-
-        "max_results":
-            RESULTS_PER_QUERY,
-
-        "topic":
-            "general",
-
-        "include_answer":
-            False,
-
-        "include_raw_content":
-            False,
-
-        "include_images":
-            False,
-
-        "include_favicon":
-            False,
+        "include_answer": False,
+        "include_raw_content": False,
+        "include_images": False,
 
         "include_domains": [
             "youtube.com",
             "youtu.be"
         ],
-
-        "auto_parameters":
-            False,
-
-        "safe_search":
-            True,
-
     }
 
 
     result = http_json(
-
         TAVILY_ENDPOINT,
 
         method="POST",
@@ -495,13 +356,10 @@ def tavily_search(
         payload=payload,
 
         headers={
-
             "Authorization":
                 "Bearer "
                 + TAVILY_API_KEY
-
         }
-
     )
 
 
@@ -511,8 +369,7 @@ def tavily_search(
     ):
 
         raise LoaderError(
-            "Resposta inesperada "
-            "da Tavily."
+            "Resposta inesperada da Tavily."
         )
 
 
@@ -527,22 +384,14 @@ def tavily_search(
     ):
 
         raise LoaderError(
-            "Lista de resultados "
-            "não encontrada."
+            "Resultados não encontrados."
         )
 
 
     return [
-
         item
-
         for item in results
-
-        if isinstance(
-            item,
-            dict
-        )
-
+        if isinstance(item, dict)
     ]
 
 
@@ -550,48 +399,29 @@ def tavily_search(
 # YOUTUBE OEMBED
 # ============================================================
 
-def youtube_oembed(
-    video_id: str
-):
+def youtube_oembed(video_id):
 
     video_url = (
-
-        "https://www.youtube.com/"
-        "watch?v="
+        "https://www.youtube.com/watch?v="
         + video_id
-
     )
 
 
     endpoint = (
-
-        "https://www.youtube.com/"
-        "oembed?"
-
+        "https://www.youtube.com/oembed?"
         + urllib.parse.urlencode({
-
-            "url":
-                video_url,
-
-            "format":
-                "json"
-
+            "url": video_url,
+            "format": "json"
         })
-
     )
 
 
     try:
 
         result = http_json(
-
             endpoint,
-
             timeout=OEMBED_TIMEOUT,
-
-            max_bytes=
-                MAX_OEMBED_BYTES
-
+            max_bytes=MAX_OEMBED_BYTES
         )
 
 
@@ -612,12 +442,10 @@ def youtube_oembed(
 
 
 # ============================================================
-# MONTAR VÍDEO
+# CRIA VÍDEO
 # ============================================================
 
-def build_video(
-    result: dict
-):
+def build_video(result):
 
     url = clean_text(
         result.get("url"),
@@ -640,110 +468,73 @@ def build_video(
     )
 
 
-    # Se o próprio YouTube não confirmar,
-    # não adicionamos.
-
     if not metadata:
 
         return None
 
 
     title = clean_text(
-
         metadata.get("title")
         or result.get("title")
         or "Vídeo",
-
         180
-
     )
 
 
     channel = clean_text(
-
-        metadata.get(
-            "author_name"
-        )
+        metadata.get("author_name")
         or "YouTube",
-
         100
-
     )
 
 
-    if not title:
-
-        title = "Vídeo"
-
-
-    if not channel:
-
-        channel = "YouTube"
-
-
     return {
-
-        "id":
-            video_id,
+        "id": video_id,
 
         "title":
-            title,
+            title or "Vídeo",
 
         "channel":
-            channel,
+            channel or "YouTube",
 
         "category":
-            (
-                "Shorts"
-                if is_short
-                else "Vídeos"
-            ),
+            "Shorts"
+            if is_short
+            else "Vídeos",
 
         "short":
             bool(is_short),
 
         "thumbnail":
             (
-                "https://i.ytimg.com/"
-                "vi/"
+                "https://i.ytimg.com/vi/"
                 + video_id
                 + "/hqdefault.jpg"
             ),
 
         "url":
             (
-                "https://www.youtube.com/"
-                "watch?v="
+                "https://www.youtube.com/watch?v="
                 + video_id
             )
-
     }
 
 
 # ============================================================
-# GRAVAÇÃO ATÔMICA
+# SALVA JSON SEM CORROMPER
 # ============================================================
 
-def write_json_atomic(
-    document: dict
-):
+def write_json_atomic(document):
 
     folder = OUTPUT_FILE.parent
 
 
     file_descriptor, temp_name = (
         tempfile.mkstemp(
-
-            prefix=
-                ".video_list.",
-
-            suffix=
-                ".tmp",
-
+            prefix=".video_list.",
+            suffix=".tmp",
             dir=str(folder),
-
             text=True
-
         )
     )
 
@@ -756,25 +547,16 @@ def write_json_atomic(
     try:
 
         with os.fdopen(
-
             file_descriptor,
-
             "w",
-
             encoding="utf-8"
-
         ) as file:
 
             json.dump(
-
                 document,
-
                 file,
-
                 ensure_ascii=False,
-
                 indent=2
-
             )
 
             file.write("\n")
@@ -787,11 +569,8 @@ def write_json_atomic(
 
 
         os.replace(
-
             temp_file,
-
             OUTPUT_FILE
-
         )
 
 
@@ -809,7 +588,7 @@ def write_json_atomic(
 
 
 # ============================================================
-# PRINCIPAL
+# MAIN
 # ============================================================
 
 def main():
@@ -817,12 +596,8 @@ def main():
     if not TAVILY_API_KEY:
 
         print(
-
-            "ERRO: TAVILY_API_KEY "
-            "não está definida.",
-
+            "ERRO: TAVILY_API_KEY não configurada.",
             file=sys.stderr
-
         )
 
         return 2
@@ -854,14 +629,18 @@ def main():
 
 
             print(
-                "Tavily retornou "
-                f"{len(results)} resultados."
+                "Tavily retornou",
+                len(results),
+                "resultados."
             )
 
 
             for result in results:
 
-                if len(videos) >= MAX_VIDEOS:
+                if (
+                    len(videos)
+                    >= MAX_VIDEOS
+                ):
 
                     break
 
@@ -895,18 +674,12 @@ def main():
 
 
                 print(
-                    " + "
-                    + video["title"][:65]
+                    " +",
+                    video["title"][:70]
                 )
 
 
-            if index < len(
-                SEARCH_QUERIES
-            ):
-
-                time.sleep(
-                    0.5
-                )
+            time.sleep(0.5)
 
 
     except LoaderError as error:
@@ -920,44 +693,30 @@ def main():
         )
 
         print(
-            "O video_list.json "
-            "anterior foi preservado.",
+            "video_list.json antigo preservado.",
             file=sys.stderr
         )
 
         return 1
 
 
-    # Nunca substitui o feed por
-    # uma lista vazia.
-
     if not videos:
 
         print(
-
-            "ERRO: nenhum vídeo "
-            "válido encontrado.",
-
+            "ERRO: nenhum vídeo válido encontrado.",
             file=sys.stderr
-
         )
 
         print(
-
-            "O JSON antigo "
-            "foi preservado.",
-
+            "video_list.json antigo preservado.",
             file=sys.stderr
-
         )
 
         return 1
 
 
     document = {
-
-        "schema_version":
-            1,
+        "schema_version": 1,
 
         "generated_at":
             datetime.now(
@@ -972,7 +731,6 @@ def main():
 
         "videos":
             videos
-
     }
 
 
@@ -1013,4 +771,4 @@ if __name__ == "__main__":
 
     raise SystemExit(
         main()
-    )
+        )
